@@ -7,6 +7,7 @@ export default function comparePackage(argRepositoryPackageJson, configs) {
 
   const devDependencies = repositoryPackageJson.devDependencies || {};
   const devDependenciesToAdd = [];
+  const devDependenciesToRemove = [];
 
   configs.forEach((config) => {
     if (config.destination) {
@@ -33,12 +34,20 @@ export default function comparePackage(argRepositoryPackageJson, configs) {
     }
 
     Object.keys(config["package.json"].devDependencies).forEach((pkg) => {
-      if (devDependencies[pkg]) {
-        // TODO How do wecompare versions
+      const expectedVersion = config["package.json"].devDependencies[pkg];
+      const currentVersion = devDependencies[pkg];
+
+      if (expectedVersion === "latest") {
+        if (currentVersion) {
+          devDependenciesToRemove.push(pkg);
+        }
+        devDependenciesToAdd.push(pkg);
+        return;
+      } else if (currentVersion) {
+        // TODO How should we handle versions
         return;
       }
 
-      const expectedVersion = config["package.json"].devDependencies[pkg];
       if (expectedVersion.slice(0, 10) === 'git+ssh://') {
         devDependenciesToAdd.push(expectedVersion);
       } else {
@@ -52,5 +61,6 @@ export default function comparePackage(argRepositoryPackageJson, configs) {
     repositoryPackageJson,
     repositoryPackageJsonChanged,
     devDependenciesToAdd,
+    devDependenciesToRemove,
   }
 }

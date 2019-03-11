@@ -102,6 +102,7 @@ config.repositories.forEach(unmergedRepositoryConfig => {
     fileInstructions,
     repositoryPackageJsonChanged,
     devDependenciesToAdd,
+    devDependenciesToRemove,
     repositoryPackageJson: newRepositoryPackageJson,
   } = comparePackage(oldRepositoryPackageJson, configs);
 
@@ -127,6 +128,9 @@ config.repositories.forEach(unmergedRepositoryConfig => {
     // eslint-disable-next-line default-case
     switch (packageManager) {
       case PackageManager.YARN:
+        if (devDependenciesToRemove.length) {
+          execSync(`yarn remove ${devDependenciesToRemove.join(' ')}`);
+        }
         execSync(`yarn add --dev ${devDependenciesToAdd.join(' ')}`);
         break;
 
@@ -140,6 +144,7 @@ config.repositories.forEach(unmergedRepositoryConfig => {
   if (output.length === 0) {
     console.log(`No changes to repository, continuing`);
     execSync(`git checkout ${remoteBranch}`);
+    execSync(`git branch -d ${branchName}`);
     return;
   }
 
