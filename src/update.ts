@@ -1,13 +1,8 @@
 /* eslint-disable no-console */
 import * as fs from 'fs';
+import * as path from 'path';
 import comparePackage from './compareRepo';
-
-const childProcess = require('child_process');
-const path = require('path');
-
-const branchName = 'dotfiles';
-
-const remoteBranch = 'master';
+import {getStore} from './store';
 
 /* eslint-disable no-unused-vars */
 const enum PackageManager {
@@ -37,62 +32,31 @@ config.repositories.forEach(unmergedRepositoryConfig => {
 
   console.log(repositoryConfig);
 
-  const repositoryUrl = repositoryConfig.repository;
-  const firstSlash = repositoryUrl.indexOf('/');
-  const dot = repositoryUrl.indexOf('.', firstSlash);
-  const directory = repositoryUrl.substring(firstSlash + 1, dot);
-  const fullPath = path.join('repositories', directory);
-
-  if (!fs.existsSync(fullPath)) {
-    // TODO `repository` variable can be exploited, need to validate
-    childProcess.execSync(
-      `git clone ${repositoryUrl}`,
-      {
-        cwd: 'repositories',
-      },
-    );
-  }
-
-  const execSync = (command) => {
-    console.log(command);
-    return childProcess.execSync(
-      command,
-      {
-        cwd: fullPath,
-      },
-    ).toString().trim();
-  };
-
-  // From https://stackoverflow.com/questions/5139290/how-to-check-if-theres-nothing-to-be-committed-in-the-current-branch
-  let output = execSync(`git status --porcelain`);
-  if (output.length !== 0) {
-    console.log(`${fullPath} is not clean`);
+  const repository = getStore(repositoryConfig);
+  if (!repository) {
+    console.log(`Unsupported repository: ${repositoryConfig.repository}`);
     return;
   }
 
-  // Check git branch status
-  const branch = execSync(`git rev-parse --abbrev-ref HEAD`);
-  if (branch !== remoteBranch) {
-    // console.log(`${repository} is not on branch: ${remoteBranch}`);
-    // TODO check errors
-    execSync(`git checkout ${remoteBranch}`);
+  repository.init();
+
+  if (!repository.isClean()){
+    console.log(`${repository.getCWD()} is not clean`);
+    return;
   }
 
-  // TODO check errors
-  execSync(`git pull --rebase`);
+  repository.prepare();
 
-  execSync(`git checkout -b ${branchName} ${remoteBranch}`);
-
-  const configs = repositoryConfig.files.map((source) => {
-    const sourceConfig = config.files.find(c => c.source === source);
-    if (!sourceConfig) {
-      console.error(`config does not exist for: ${source}`);
+  const templates = repositoryConfig.templates.map((name) => {
+    const template = config.templates.find(c => c.name === name);
+    if (!template) {
+      console.error(`template does not exist for: ${name}`);
       return null;
     }
-    return sourceConfig;
+    return template;
   }).filter(config2 => !!config2);
 
-  const repositoryPackageJsonPath = path.join(fullPath, 'package.json');
+  const repositoryPackageJsonPath = path.join(repository.getCWD(), 'package.json');
   const repositoryPackageJsonExists = fs.existsSync(repositoryPackageJsonPath);
   const oldRepositoryPackageJson = repositoryPackageJsonExists
     ? JSON.parse(fs.readFileSync(repositoryPackageJsonPath).toString())
@@ -104,11 +68,11 @@ config.repositories.forEach(unmergedRepositoryConfig => {
     devDependenciesToAdd,
     devDependenciesToRemove,
     repositoryPackageJson: newRepositoryPackageJson,
-  } = comparePackage(oldRepositoryPackageJson, configs);
+  } = comparePackage(oldRepositoryPackageJson, templates);
 
   fileInstructions.forEach(({ source, destination}) => {
     const sourcePath = path.resolve('config', source);
-    const destinationPath = path.join(fullPath, destination);
+    const destinationPath = path.join(repository.getCWD(), destination);
     fs.copyFileSync(sourcePath, destinationPath);
   });
 
@@ -121,7 +85,7 @@ config.repositories.forEach(unmergedRepositoryConfig => {
     if (!repositoryPackageJsonExists && !repositoryPackageJsonChanged) {
       fs.writeFileSync(repositoryPackageJsonPath, '{}');
     }
-    const packageManager = fs.existsSync(path.join(fullPath, 'package.lock'))
+    const packageManager = fs.existsSync(path.join(repository.getCWD(), 'package.lock'))
       ? PackageManager.NPM
       : PackageManager.YARN;
 
@@ -129,35 +93,25 @@ config.repositories.forEach(unmergedRepositoryConfig => {
     switch (packageManager) {
       case PackageManager.YARN:
         if (devDependenciesToRemove.length) {
-          execSync(`yarn remove ${devDependenciesToRemove.join(' ')}`);
+          repository.execSync(`yarn remove ${devDependenciesToRemove.join(' ')}`);
         }
-        execSync(`yarn add --dev ${devDependenciesToAdd.join(' ')}`);
+        repository.execSync(`yarn add --dev ${devDependenciesToAdd.join(' ')}`);
         break;
 
       case PackageManager.NPM:
-        execSync(`npm install --only=dev ${devDependenciesToAdd.join(' ')}`);
+        if (devDependenciesToRemove.length) {
+          repository.execSync(`npm remove ${devDependenciesToRemove.join(' ')}`);
+        }
+        repository.execSync(`npm install --only=dev ${devDependenciesToAdd.join(' ')}`);
         break;
     }
   }
 
-  output = execSync(`git status --porcelain`);
-  if (output.length === 0) {
+  if (repository.isClean()) {
     console.log(`No changes to repository, continuing`);
-    execSync(`git checkout ${remoteBranch}`);
-    execSync(`git branch -d ${branchName}`);
+    repository.revert();
     return;
   }
 
-  // Add files
-  execSync(`git add .`);
-
-  // Commit files
-  const commitMessage = `dotfiles: sync with template repository`;
-
-  execSync(`git commit -m '${commitMessage}'`);
-
-//  execSync(`git push --set-upstream origin ${branchName}`);
-//  const pullRequestUrl = execSync(`hub pull-request --no-edit`);
-//  console.log(pullRequestUrl);
   console.log();
 })

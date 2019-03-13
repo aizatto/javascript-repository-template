@@ -1,8 +1,13 @@
 {
-  "files": [
+  "templates": [
     {
-      "source": ".eslintrc-typescript.json",
-      "destination": ".eslintrc.json",
+      "source": "eslintrc-typescript",
+      "files": [
+        {
+          "source": ".eslintrc-typescript.json",
+          "destination": ".eslintrc.json"
+        }
+      ],
       "package.json": {
         "scripts": {
           "lint": "yarn run eslint --fix --ext ts,tsx,js,jsx src"
@@ -22,7 +27,7 @@
       }
     },
     {
-      "source": "typescript-mocha",
+      "name": "typescript-mocha",
       "package.json": {
         "scripts": {
           "test": "yarn run mocha -r ts-node/register src/*.test.ts"
@@ -37,8 +42,43 @@
       }
     },
     {
-      "source": "tsconfig-es6.json",
-      "destination": "tsconfig.json"
+      "name": "tsconfig-es6",
+      "files": [
+        {
+          "source": "tsconfig-es6.json",
+          "destination": "tsconfig.json"
+        }
+      ]
+    },
+    {
+      "name": "create-react-app",
+      "files": [
+        {
+          "source": ".eslintrc-create-react-app.json",
+          "destination": ".eslintrc.json"
+        }
+      ],
+      "package.json": {
+        "scripts": {
+          "lint": "yarn run eslint --fix --ext ts,tsx src"
+        },
+        "devDependencies": {
+          "@typescript-eslint/eslint-plugin": "latest",
+          "@typescript-eslint/parser": "latest",
+          "eslint-config-airbnb": "latest",
+          "eslint-config-prettier": "latest",
+          "eslint-plugin-prettier": "latest",
+          "husky": "latest",
+          "prettier": "latest",
+          "pretty-quick": "latest",
+          "typescript": "latest"
+        },
+        "husky": {
+          "hooks": {
+            "pre-commit": "pretty-quick --staged"
+          }
+        }
+      }
     }
   ],
   "defaults": {
@@ -47,37 +87,49 @@
   "repositories": [
     {
       "repository": "git@github.com:aizatto/javascript-repository-template.git",
-      "files": [
+      "templates": [
         ".eslintrc-typescript.json",
         "typescript-mocha"
       ]
     },
     {
       "repository": "git@github.com:aizatto/typescript-playground.git",
-      "files": [
+      "templates": [
         ".eslintrc-typescript.json",
         "tsconfig-es6.json"
       ]
     },
     {
       "repository": "git@github.com:aizatto/serverless-prototypes.git",
-      "files": [
+      "templates": [
         ".eslintrc-typescript.json",
         "tsconfig-es6.json"
       ]
     },
     {
       "repository": "git@github.com:aizatto/build.my.git",
-      "files": [
+      "templates": [
         ".eslintrc-typescript.json",
         "tsconfig-es6.json"
       ]
     },
     {
-      "skip": false,
       "repository": "git@github.com:aizatto/timestamp-js.git",
-      "files": [
+      "templates": [
         ".eslintrc-typescript.json"
+      ]
+    },
+    {
+      "repository": "git@github.com:aizatto/repository-browser.git",
+      "templates": [
+        ".eslintrc-typescript.json"
+      ]
+    },
+    {
+      "skip": false,
+      "repository": "file:///Users/aizat/src/template-test",
+      "templates": [
+        "create-react-app"
       ]
     }
   ]
