@@ -91,8 +91,8 @@ export default function comparePackage(argRepositoryPackageJson, templates) {
         dependencies,
       );
 
-      dependenciesToAdd = dependenciesToAdd.concat(toAdd);
-      dependenciesToRemove = dependenciesToAdd.concat(toRemove);
+      dependenciesToAdd.push(...toAdd);
+      dependenciesToRemove.push(...toRemove);
     }
 
     if (template["package.json"].devDependencies) {
@@ -101,8 +101,8 @@ export default function comparePackage(argRepositoryPackageJson, templates) {
         devDependencies,
       );
 
-      devDependenciesToAdd = devDependenciesToAdd.concat(toAdd);
-      devDependenciesToRemove = devDependenciesToAdd.concat(toRemove);
+      devDependenciesToAdd.push(...toAdd);
+      devDependenciesToRemove.push(...toRemove);
     }
 
   });
